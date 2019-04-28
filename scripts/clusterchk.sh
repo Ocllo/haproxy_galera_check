@@ -37,19 +37,59 @@
 MYSQL_HOST="localhost"
 MYSQL_PORT="3306"
 
+USER=""
+PASSWORD=""
+INIFILE="/etc/mysql/debian.cnf"
+
 #
-# Read the Debian config file (INI format) for MySQL:
+# Parse command line arguments
 #
-read_debian_config () {
+
+OPTIND=1
+
+while getopts "h?i:u:p:" opt; do
+    case "$opt" in
+    h|\?)
+        print_help
+        exit 0
+        ;;
+    u)
+        USER=$OPTARG
+        ;;
+    p)
+        PASSWORD=$OPTARG
+        ;;
+    i)
+        INIFILE=$OPTARG
+        ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ "${1:-}" = "--" ] && shift
+
+if [ -n "${USER}" ] && [ -n "${PASSWORD}" ]; then
+    # Concatenate the parameters for the MySQL client:
+    USEROPTIONS="--user=${USER} --password=${PASSWORD}"
+else
+    # Read the ini config
+    read_ini_config "${INIFILE}"
+fi
+
+#
+# Read the config file (INI format) for MySQL:
+#
+read_ini_config () {
 
   local DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
   source $DIR/read_ini.sh
 
   # Call the parser function over the debian.cnf file:
-  read_ini -p DebCnf /etc/mysql/debian.cnf
+  read_ini -p IniCnf "$1"
 
   # Concatenate the parameters for the MySQL client:
-  USEROPTIONS="--user=$DebCnf__client__user --password=$DebCnf__client__password"
+  USEROPTIONS="--user=$IniCnf__client__user --password=$IniCnf__client__password"
 }
 
 #
@@ -57,7 +97,7 @@ read_debian_config () {
 #
 http_ok () {
   /bin/echo -e "HTTP/1.1 200 OK\r\n"
-  /bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+  /bin/echo -e "Content-Type: text/plain\r\n"
   /bin/echo -e "\r\n"
   /bin/echo -e "$1"
   /bin/echo -e "\r\n"
@@ -68,7 +108,7 @@ http_ok () {
 #
 http_no_access () {
   /bin/echo -e "HTTP/1.1 503 Service Unavailable\r\n"
-  /bin/echo -e "Content-Type: Content-Type: text/plain\r\n"
+  /bin/echo -e "Content-Type: text/plain\r\n"
   /bin/echo -e "\r\n"
   /bin/echo -e "$1"
   /bin/echo -e "\r\n"
@@ -91,11 +131,6 @@ if [ "$MYSQL_INSTANCE" != 'active' ]; then
     http_no_access "MySQL instance is reported $MYSQL_STATUS.\r\n"
     exit 1
 fi
-
-#
-# Acquire Debian user credentials:
-#
-read_debian_config
 
 #
 # Check the node status against the Galera Cluster:
@@ -126,7 +161,7 @@ if [ "$GALERA_STATUS" == "Synced" ]; then
      http_no_access "Galera status is $GALERA_STATUS but the local MySQL instance is reported to be read-only.\r\n"
   fi
 elif [ "$GALERA_STATUS" == "Donor" ]; then # node is acting as 'Donor' for another node
-  if [ "$SST_METHOD" == "xtrabackup" ] || [ "$SST_METHOD" == "xtrabackup-v2" ]; then
+  if [ "$SST_METHOD" == "xtrabackup" ] || [ "$SST_METHOD" == "xtrabackup-v2" ] || [ "$SST_METHOD" == "mariabackup" ]; then
      http_ok "Galera status is $GALERA_STATUS.\r\n" # xtrabackup is a non-blocking method
   else
      http_no_access "Galera status is $GALERA_STATUS.\r\n"

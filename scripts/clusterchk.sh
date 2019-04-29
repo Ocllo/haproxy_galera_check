@@ -81,7 +81,6 @@ fi
 # Read the config file (INI format) for MySQL:
 #
 read_ini_config () {
-
   local DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
   source $DIR/read_ini.sh
 
@@ -96,22 +95,40 @@ read_ini_config () {
 # Node status looks fine, so return an 'HTTP 200' status code.
 #
 http_ok () {
-  /bin/echo -e "HTTP/1.1 200 OK\r\n"
-  /bin/echo -e "Content-Type: text/plain\r\n"
-  /bin/echo -e "\r\n"
-  /bin/echo -e "$1"
-  /bin/echo -e "\r\n"
+  message=$1
+  length=${#message}
+
+  /bin/echo -ne "HTTP/1.1 200 OK\r\n"
+
+  /bin/echo -ne "Content-Type: text/plain\r\n"
+  /bin/echo -ne "Connection: close\r\n" 
+  /bin/echo -ne "Content-Length: $length\r\n"
+
+  /bin/echo -ne "\r\n"
+  /bin/echo -ne "$message"
+  /bin/echo -ne "\r\n"
+
+  sleep 0.1
 }
 
 #
 # Node status reports problems, so return an 'HTTP 503' status code.
 #
 http_no_access () {
-  /bin/echo -e "HTTP/1.1 503 Service Unavailable\r\n"
-  /bin/echo -e "Content-Type: text/plain\r\n"
-  /bin/echo -e "\r\n"
-  /bin/echo -e "$1"
-  /bin/echo -e "\r\n"
+  message=$1
+  length=${#message}
+
+  /bin/echo -ne "HTTP/1.1 503 Service Unavailable\r\n"
+
+  /bin/echo -ne "Content-Type: text/plain\r\n"
+  /bin/echo -ne "Connection: close\r\n" 
+  /bin/echo -ne "Content-Length: $length\r\n"
+
+  /bin/echo -ne "\r\n"
+  /bin/echo -ne "$message"
+  /bin/echo -ne "\r\n"
+
+  sleep 0.1
 }
 
 #
@@ -126,8 +143,8 @@ status_query () {
 #
 # Safety check: verify if MySQL is up and running.
 #
-MYSQL_INSTANCE=`/bin/systemctl is-active mysql.service`
-if [ "$MYSQL_INSTANCE" != 'active' ]; then
+MYSQL_STATUS=`/bin/systemctl is-active mysql.service`
+if [ "$MYSQL_STATUS" != 'active' ]; then
     http_no_access "MySQL instance is reported $MYSQL_STATUS.\r\n"
     exit 1
 fi

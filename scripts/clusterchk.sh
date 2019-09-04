@@ -110,8 +110,7 @@ http_ok () {
   /bin/echo -ne "Content-Length: ${length}\r\n"
 
   /bin/echo -ne "\r\n"
-  /bin/echo -ne "${message}"
-  /bin/echo -ne "\r\n"
+  /bin/echo -ne "OK: ${message}"
 
   sleep 0.1
 }
@@ -130,8 +129,7 @@ http_no_access () {
   /bin/echo -ne "Content-Length: ${length}\r\n"
 
   /bin/echo -ne "\r\n"
-  /bin/echo -ne "${message}"
-  /bin/echo -ne "\r\n"
+  /bin/echo -ne "ERROR: ${message}"
 
   sleep 0.1
 }
